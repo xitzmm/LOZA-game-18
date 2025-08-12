@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Loza's Staircase Adventure</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #cce7ff; }
+  canvas { display: block; background: #cce7ff; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const gravity = 0.5;
+
+let keys = {};
+
+class Player {
+  constructor() {
+    this.width = 40;
+    this.height = 40;
+    this.x = 50;
+    this.y = canvas.height - this.height - 50;
+    this.vx = 0;
+    this.vy = 0;
+    this.color = 'orange';
+    this.speed = 5;
+    this.jumpStrength = 12;
+  }
+  draw() {
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x, this.y, this.width, this.height);
+  }
+  update() {
+    if (keys['ArrowLeft']) this.vx = -this.speed;
+    else if (keys['ArrowRight']) this.vx = this.speed;
+    else this.vx = 0;
+
+    this.x += this.vx;
+
+    this.vy += gravity;
+    this.y += this.vy;
+
+    if (this.y + this.height > canvas.height - 50) {
+      this.y = canvas.height - 50 - this.height;
+      this.vy = 0;
+      this.jumping = false;
+    }
+    this.draw();
+  }
+  jump() {
+    if (!this.jumping) {
+      this.vy = -this.jumpStrength;
+      this.jumping = true;
+    }
+  }
+}
+
+class Platform {
+  constructor(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.width = w;
+    this.height = h;
+    this.color = '#654321';
+  }
+  draw() {
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x, this.y, this.width, this.height);
+  }
+}
+
+class Monster {
+  constructor(x, y) {
+    this.width = 30;
+    this.height = 30;
+    this.x = x;
+    this.y = y;
+    this.vx = 1;
+    this.color = 'red';
+    this.name = 'ahmed taha';
+  }
+  draw() {
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x, this.y, this.width, this.height);
+    ctx.fillStyle = 'black';
+    ctx.font = '12px Arial';
+    ctx.fillText(this.name, this.x - 10, this.y - 5);
+  }
+  update() {
+    this.x += this.vx;
+    if (this.x < this.minX || this.x > this.maxX) this.vx *= -1;
+    this.draw();
+  }
+}
+
+class Heart {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.r = 20;
+  }
+  draw() {
+    ctx.fillStyle = 'pink';
+    ctx.beginPath();
+    ctx.arc(this.x - this.r/2, this.y, this.r, 0, Math.PI * 2);
+    ctx.arc(this.x + this.r/2, this.y, this.r, 0, Math.PI * 2);
+    ctx.moveTo(this.x - this.r*1.5, this.y);
+    ctx.lineTo(this.x, this.y + this.r*1.5);
+    ctx.lineTo(this.x + this.r*1.5, this.y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+const player = new Player();
+
+const platforms = [];
+const monsters = [];
+
+// staircase platforms
+for (let i = 0; i < 5; i++) {
+  let p = new Platform(150 + i*150, canvas.height - 100 - i*80, 120, 20);
+  platforms.push(p);
+  let m = new Monster(p.x + 20, p.y - 30);
+  m.minX = p.x + 10;
+  m.maxX = p.x + p.width - m.width - 10;
+  monsters.push(m);
+}
+
+const heart = new Heart(platforms[platforms.length - 1].x + 60, platforms[platforms.length - 1].y - 40);
+
+function detectCollision(a, b) {
+  return a.x < b.x + b.width && a.x + a.width > b.x &&
+         a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // ground
+  ctx.fillStyle = '#228B22';
+  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+  // draw and update platforms
+  platforms.forEach(p => p.draw());
+
+  // update monsters
+  monsters.forEach(m => {
+    m.update();
+    if (detectCollision(player, m)) {
+      player.x = 50;
+      player.y = canvas.height - player.height - 50;
+      player.vx = 0;
+      player.vy = 0;
+    }
+  });
+
+  // draw heart
+  heart.draw();
+  if (Math.hypot(player.x - heart.x, player.y - heart.y) < 40) {
+    alert('Loza I will miss u enjoy my love');
+    player.x = 50;
+    player.y = canvas.height - player.height - 50;
+  }
+
+  // check platform collisions
+  platforms.forEach(p => {
+    if (player.x < p.x + p.width && player.x + player.width > p.x &&
+        player.y + player.height <= p.y && player.y + player.height + player.vy >= p.y) {
+      player.y = p.y - player.height;
+      player.vy = 0;
+      player.jumping = false;
+    }
+  });
+
+  player.update();
+
+  requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'ArrowUp') player.jump();
+});
+window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+gameLoop();
+</script>
+</body>
+</html>
